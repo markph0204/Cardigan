@@ -61,3 +61,6 @@ modules/video/gps
 .envrc
 docs/build
 .direnv
+.zip
+scripts/build
+keys

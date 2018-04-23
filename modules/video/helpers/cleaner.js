@@ -5,46 +5,65 @@
 var fs = require('fs');
 var disk = require('diskusage');
 
-var dir = '/home/Cardigan/modules/video/';
+var dir = '/dride/';
 var dirVideo = dir + 'clip/';
+var videoModuleDir = '/home/core/modules/video/';
 
-disk.check('/', function (err, info) {
-  if (err) {
-    console.log(err);
-    process.exit(0);
-  } else {
-    var freeSpace = info.free * 100 / info.total;
+disk.check('/', (err, info) => {
+	if (err) {
+		console.log(err);
+		process.exit(0);
+	} else {
+		var freeSpace = info.free * 100 / info.total;
+		//console.log('freeSpace: ', freeSpace);
 
-    //if we got less than 10% let's cleanup
-    if (freeSpace < 10) {
+		//if we got less than 15% let's cleanup
+		if (freeSpace < 15) {
+			//load EMR clips
+			var savedVideos = fs.readFileSync(videoModuleDir + 'savedVideos.json', 'utf8');
+			var EMRvideos = JSON.parse(savedVideos ? savedVideos : []);
 
-      fs.readdir(dirVideo, function (err, files) {
-        if (err) {
-          console.error("Could not list the directory.", err);
-          process.exit(0);
-        }
+			fs.readdir(dirVideo, (err, files) => {
+				if (err) {
+					console.error('Could not list the directory.', err);
+					process.exit(0);
+				}
 
-        files.sort(function (filea, fileb) {
-          return filea.time < fileb.time;
-        });
+				files.sort((filea, fileb) => {
+					return filea.time < fileb.time;
+				});
+				var count = 0;
+				files.forEach((file, index) => {
+					fileName = file.split('.').shift();
 
-        files.forEach(function (file, index) {
-          if (index < 2) return;
-          fileName = file.split('.').shift()
-          try {
-            fs.unlinkSync(dirVideo + fileName + '.mp4');
-          } catch (err) {
-			console.warn(err)
-          }
-          try {
-            fs.unlinkSync(dir + 'thumb/' + fileName + '.jpg');
-          } catch (err) {
-			console.warn(err)
-          }
-        })
-
-      })
-
-    }
-  }
+					if (!isEMR(EMRvideos, fileName) && fileName) {
+						try {
+							fs.unlinkSync(dirVideo + fileName + '.mp4');
+						} catch (e) {
+							console.log(e);
+						}
+						try {
+							fs.unlinkSync(dir + 'thumb/' + fileName + '.jpg');
+						} catch (e) {
+							console.log(e);
+						}
+						count++;
+					}
+					console.log(count);
+					if (count > 5) {
+						process.exit();
+					}
+				});
+			});
+		}
+	}
 });
+
+function isEMR(EMRvideos, fileName) {
+	for (var i = 0; i < EMRvideos.length; i++) {
+		if (EMRvideos[i].key === fileName) {
+			return true;
+		}
+	}
+	return false;
+}
